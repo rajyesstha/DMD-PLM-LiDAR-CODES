@@ -1,7 +1,6 @@
 % Code by Rajesh Shrestha
 % July 22, 2025
 
-
 function plmgratingvisualization()
     % Generate and save CGH bitpattern maps for PLM upload.
     % Visualize the true grating-direction phase ramp with piston index and π-phase values.
@@ -9,7 +8,7 @@ function plmgratingvisualization()
     %% Parameters
     grating_period   = 1.5;               % Grating period (pixels)
     theta_degrees    = 45;             % Grating angle (degrees)
-    max_x            = 100;             % Number of ramp points to visualize
+    max_x            = 50;             % Number of ramp points to visualize
     pixel_size_nm    = 10800;           % Pixel pitch (nm)
     max_displacement = 296.25;          % Maximum stroke (nm)
 
@@ -95,7 +94,10 @@ function plmgratingvisualization()
 
     %% Phase Ramp Visualization (True θ Direction)
     figure;
-    set(gcf, 'Color', 'white'); hold on;
+    set(gcf, 'Color', 'white', 'Position', [100, 100, 600, 450], ... % Set figure size for screen display
+        'PaperUnits', 'inches', 'PaperSize', [8.5, 11], ... % US Letter size
+        'PaperPosition', [0.5, 0.5, 7.5, 10]); % Center figure on page with margins
+    hold on;
 
     t_rad = deg2rad(theta_degrees);
     xc = round(size(pattern_indices, 2) / 2);
@@ -108,42 +110,49 @@ function plmgratingvisualization()
     ys = round(yc + (x - 1) * dy);
     xs = min(max(xs, 1), cols);
     ys = min(max(ys, 1), rows);
-    y = arrayfun(@(i) pattern_indices(ys(i), xs(i)), 1:max_x);
-
-    plot(x, y, '-', 'LineWidth', 1.5, 'Color', 'b', ...
-        'Marker', 'o', 'MarkerSize', 6, ...
-        'MarkerEdgeColor', 'r', 'MarkerFaceColor', 'r');
-
-    for k = 1:max_x
-        text(x(k)-0.9, y(k)+0.2, sprintf('P_{%d}', y(k)), ...
-            'FontSize', 12, 'HorizontalAlignment', 'center', 'VerticalAlignment', 'bottom');
-    end
-
-    xlabel('Step Along Grating Vector', 'FontSize', 20, 'Interpreter', 'latex');
-    ylabel('Piston State Index \( P_k \)', 'FontSize', 20, 'Interpreter', 'latex');
-    title(sprintf('Phase Ramp: $\\Lambda = %.1f$ px, $\\theta = %g^\\circ$', ...
-        grating_period, theta_degrees), ...
-        'FontSize', 25, 'Interpreter', 'latex');
-
-    ylim([0 15.5]);
-    xlim([1 max_x]);
-    set(gca, 'FontSize', 20, 'Box', 'on', 'GridLineStyle', ':', 'LineWidth', 1);
-    grid on;
-
-    % Legend: Unique P_k with π-phase (905nm)
+    y_indices = arrayfun(@(i) pattern_indices(ys(i), xs(i)), 1:max_x);
     phase_pi_905 = [...
         0.000, 0.014, 0.029, 0.059, ...
         0.078, 0.101, 0.158, 0.242, ...
         0.478, 0.518, 0.590, 0.686, ...
         0.837, 0.932, 1.113, 1.309];
-    used_pistons = unique(y);
-    legend_entries = arrayfun(@(p) ...
-        sprintf('P%d (%.3f$\\pi$)', p, phase_pi_905(p+1)), ...
-        used_pistons, 'UniformOutput', false);
-    legend_label = ['\textbf{Piston States with Phase:} ', strjoin(legend_entries, ', ')];
-    legend(legend_label, 'Location', 'best', 'FontSize', 18, 'Interpreter', 'latex');
+    y = phase_pi_905(y_indices + 1);  % Use phase_pi_905 for phase values in pi units
+
+    plot(x, y, '-', 'LineWidth', 2, 'Color', 'b', ...
+        'Marker', 'o', 'MarkerSize', 8, ...
+        'MarkerEdgeColor', 'r', 'MarkerFaceColor', 'r');
+
+    for k = 1:max_x
+        text(x(k), y(k)+0.05, sprintf('$%.2f\\pi$', y(k)), ...
+            'FontSize', 20, 'HorizontalAlignment', 'center', 'VerticalAlignment', 'bottom', 'Interpreter', 'latex');
+    end
+
+    xlabel('Step (Mirror) Along Grating Vector', 'FontSize', 24, 'Interpreter', 'latex');
+    ylabel('Phase (in $\pi$ radians)', 'FontSize', 24, 'Interpreter', 'latex');
+    title(sprintf('Phase Ramp: $\\Lambda = %.1f$ px, $\\theta = %g^\\circ$', ...
+        grating_period, theta_degrees), ...
+        'FontSize', 28, 'Interpreter', 'latex');
+
+    ylim([0 max(phase_pi_905) + 0.1]);
+    xlim([1 max_x]);
+    set(gca, 'FontSize', 20, 'Box', 'on', 'GridLineStyle', ':', 'LineWidth', 1.5);
+    grid on;
+
+    % % Legend: Unique phase values in π
+    % used_pistons = unique(y_indices);
+    % legend_entries = arrayfun(@(p) ...
+    %     sprintf('$%.2f\\pi$', phase_pi_905(p+1)), ...
+    %     used_pistons, 'UniformOutput', false);
+    % legend_label = sprintf('\\textbf{Phase Values:} %s', strjoin(legend_entries, ', '));
+    % legend(legend_label, 'Location', 'best', 'FontSize', 18, 'Interpreter', 'latex');
 
     set(gcf, 'Renderer', 'painters');
+
+    % Save as vectorized PDF
+    pdf_filename = sprintf('Phase_Ramp_p%g_theta%g.pdf', grating_period, theta_degrees);
+    print(gcf, pdf_filename, '-dpdf', '-painters', '-bestfit');
+    fprintf('Saved vectorized PDF: %s\n', pdf_filename);
+
     hold off;
 end
 
@@ -171,5 +180,3 @@ function [pattern_indices, used_patterns, n_values] = CreateCGHPattern(grating_p
     fprintf('Grating period: %g, n-range: [%.2f, %.2f]\n', ...
         grating_period, min(n_values(:)), max(n_values(:)));
 end
-
- 
